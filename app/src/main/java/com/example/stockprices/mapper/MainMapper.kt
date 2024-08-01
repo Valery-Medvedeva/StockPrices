@@ -2,8 +2,9 @@ package com.example.stockprices.mapper
 
 import com.example.stockprices.data.model.BarDto
 import com.example.stockprices.domain.Bar
+import javax.inject.Inject
 
-class MainMapper {
+class MainMapper @Inject constructor(){
 
     fun mapResponseToBarList(dtoList: List<BarDto>):List<Bar>{
         val newList= mutableListOf<Bar>()

@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.stockprices.getMainComponent
 
 class MainActivity : ComponentActivity() {
     @SuppressLint("StateFlowValueCalledInComposition")
@@ -16,7 +17,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val viewModel: MainViewModel = viewModel()
+            val component = getMainComponent()
+            val viewModel: MainViewModel = viewModel(factory = component.getViewModelFactory())
             val screenState = viewModel.state.collectAsState()
             when (val currentState=screenState.value) {
                 is MainState.Initial -> {}
