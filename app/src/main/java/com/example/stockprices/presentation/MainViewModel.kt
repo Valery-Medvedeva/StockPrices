@@ -14,7 +14,7 @@ class MainViewModel @Inject constructor(
     private val loadBarListUseCase: LoadBarListUseCase
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow<MainState>(MainState.Initial)
+    private val _state = MutableStateFlow<MainScreenState>(MainScreenState.Initial)
     val state = _state.asStateFlow()
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
@@ -28,7 +28,7 @@ class MainViewModel @Inject constructor(
     private fun loadBarList() {
         viewModelScope.launch(exceptionHandler) {
             val barList=loadBarListUseCase.invoke()
-            _state.value=MainState.Content(barList)
+            _state.value=MainScreenState.Content(barList)
         }
     }
 }
