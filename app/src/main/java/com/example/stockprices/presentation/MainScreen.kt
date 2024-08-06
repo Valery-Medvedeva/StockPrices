@@ -3,6 +3,7 @@ package com.example.stockprices.presentation
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.TransformableState
+import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -14,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
@@ -33,11 +35,13 @@ import kotlin.math.roundToInt
 private const val MIN_VISIBLE_BARS_COUNT = 20
 
 @Composable
-fun MainScreen(bars: List<Bar>) {
-
+fun MainScreen(
+    modifier: Modifier=Modifier,
+    bars: List<Bar>
+) {
     var mainState by rememberMainState(bars = bars)
 
-    val transformableState = TransformableState { zoomChange, panChange, _ ->
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
         val visibleBarCount = (mainState.visibleBarCount / zoomChange).roundToInt()
             .coerceIn(MIN_VISIBLE_BARS_COUNT, bars.size)
 
@@ -49,20 +53,24 @@ fun MainScreen(bars: List<Bar>) {
             scrolledBy = scrolledBy
         )
     }
-    val textMeasurer= rememberTextMeasurer()
+    val textMeasurer = rememberTextMeasurer()
     Canvas(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
+            .clipToBounds()
             .padding(top = 32.dp, bottom = 32.dp)
             .transformable(transformableState)
             .onSizeChanged {
-                mainState = mainState.copy(screenWidth = it.width.toFloat())
+                mainState = mainState.copy(
+                    screenWidth = it.width.toFloat(),
+                    screenHeight = it.height.toFloat()
+                )
             }
     ) {
-        val maxPrice = mainState.visibleBars.maxOf { it.highestPrice }
-        val minPrice = mainState.visibleBars.minOf { it.highestPrice }
-        val pxPerPoint = size.height / (maxPrice - minPrice)
+        val maxPrice = mainState.maxPrice
+        val minPrice = mainState.minPrice
+        val pxPerPoint = mainState.pxPerPoint
         translate(left = mainState.scrolledBy) {
             bars.forEachIndexed { index, bar ->
                 val offsetX = size.width - index * mainState.barWidth
@@ -83,22 +91,22 @@ fun MainScreen(bars: List<Bar>) {
                 )
             }
         }
-            drawPrices(
-                min = minPrice,
-                pxPerPoint = pxPerPoint,
-                lastPrice = bars.first().closePrice,
-                textMeasurer = textMeasurer,
-                max=maxPrice
-            )
+        drawPrices(
+            min = minPrice,
+            pxPerPoint = pxPerPoint,
+            lastPrice = bars.first().closePrice,
+            textMeasurer = textMeasurer,
+            max = maxPrice
+        )
     }
 }
 
 private fun DrawScope.drawPrices(
     min: Float,
-    max:Float,
+    max: Float,
     pxPerPoint: Float,
-    lastPrice:Float,
-    textMeasurer: TextMeasurer
+    lastPrice: Float,
+    textMeasurer: TextMeasurer,
 ) {
     //max
     drawDashedLineWithText(
@@ -110,7 +118,7 @@ private fun DrawScope.drawPrices(
     //lastPrice
     drawDashedLineWithText(
         start = Offset(0f, size.height - (lastPrice - min) * pxPerPoint),
-        end = Offset(size.width, size.height -(lastPrice - min) * pxPerPoint),
+        end = Offset(size.width, size.height - (lastPrice - min) * pxPerPoint),
         textMeasurer = textMeasurer,
         price = lastPrice
     )
@@ -124,13 +132,13 @@ private fun DrawScope.drawPrices(
 }
 
 private fun DrawScope.drawDashedLineWithText(
-    color:Color=Color.White,
-    start:Offset,
-    end:Offset,
-    strokeWidth:Float = 1f,
+    color: Color = Color.White,
+    start: Offset,
+    end: Offset,
+    strokeWidth: Float = 1f,
     textMeasurer: TextMeasurer,
-    price:Float
-){
+    price: Float,
+) {
     drawLine(
         color = color,
         start = start,
@@ -141,14 +149,15 @@ private fun DrawScope.drawDashedLineWithText(
         )
     )
     val textLayoutResult = textMeasurer.measure(
-        text=price.toString(),
+        text = price.toString(),
         style = TextStyle(
-            color=Color.White,
+            color = Color.White,
             fontSize = 12.sp
         )
     )
     drawText(
         textLayoutResult = textLayoutResult,
-        topLeft = Offset(size.width-textLayoutResult.size.width,end.y))
+        topLeft = Offset(size.width - textLayoutResult.size.width-4.dp.toPx(), end.y)
+    )
 }
 
