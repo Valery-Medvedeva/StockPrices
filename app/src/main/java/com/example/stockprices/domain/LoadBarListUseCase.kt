@@ -3,7 +3,7 @@ package com.example.stockprices.domain
 import javax.inject.Inject
 
 class LoadBarListUseCase @Inject constructor(
-    private val repository: Repository
+    private val repository: Repository,
 ) {
-    suspend operator fun invoke()=repository.loadBarList()
+    suspend fun loadBars(timeFrame: TimeFrame)=repository.loadBarList(timeFrame = timeFrame)
 }
