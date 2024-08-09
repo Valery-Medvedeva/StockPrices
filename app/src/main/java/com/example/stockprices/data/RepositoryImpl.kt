@@ -13,8 +13,7 @@ class RepositoryImpl @Inject constructor(
 ) : Repository {
 
     override suspend fun loadBarList(timeFrame: TimeFrame): List<Bar> {
-        val tfDto=mapper.mapTimeFrameToTimeFrameDto(timeFrame)
-        val barListDto = apiService.loadBars(tfDto.value).barList
-        return mapper.mapResponseToBarList(barListDto)
+        val tfDto = mapper.mapTimeFrameToTimeFrameDto(timeFrame)
+        return mapper.mapResponseToBarList(apiService.loadBars(tfDto.value).barList)
     }
 }

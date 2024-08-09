@@ -8,5 +8,7 @@ sealed class MainScreenState {
 
     data object Loading:MainScreenState()
 
+    data object Error: MainScreenState()
+
     data class Content(val barList:List<Bar>, val timeFrame: TimeFrame) : MainScreenState()
 }

@@ -1,7 +1,6 @@
 package com.example.stockprices.data.network
 
 import com.example.stockprices.data.model.ResponseDto
-import com.example.stockprices.data.model.TimeFrameDto
 import retrofit2.http.GET
 import retrofit2.http.Path
 

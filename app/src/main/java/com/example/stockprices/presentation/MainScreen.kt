@@ -1,5 +1,8 @@
 package com.example.stockprices.presentation
 
+import android.icu.text.DateFormat
+import android.icu.util.Calendar
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -13,10 +16,20 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,8 +49,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.stockprices.R
+import com.example.stockprices.domain.Bar
 import com.example.stockprices.domain.TimeFrame
 import com.example.stockprices.getMainComponent
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val MIN_VISIBLE_BARS_COUNT = 20
@@ -48,7 +66,10 @@ fun MainScreen(
 ) {
     val component = getMainComponent()
     val viewModel: MainViewModel = viewModel(factory = component.getViewModelFactory())
-    val screenState = viewModel.state.collectAsState()
+    val screenState = viewModel.state.catch {
+        emit(MainScreenState.Error)
+    }.collectAsState(initial = MainScreenState.Initial)
+
     when (val currentState = screenState.value) {
         is MainScreenState.Initial -> {}
         is MainScreenState.Content -> {
@@ -58,7 +79,8 @@ fun MainScreen(
                 mainState = mainState,
                 onMainStateChanged = {
                     mainState.value = it
-                }
+                },
+                timeFrame = currentState.timeFrame
             )
             TimeFrames(selectedFrame = currentState.timeFrame) {
                 viewModel.loadBarList(it)
@@ -73,7 +95,67 @@ fun MainScreen(
                 contentAlignment = Alignment.Center
             ) { CircularProgressIndicator() }
         }
+
+        is MainScreenState.Error -> {
+           Log.d("PERA", "something goes wrong")
+        }
     }
+}
+
+private fun DrawScope.drawTimeDelimiter(
+    bar: Bar,
+    nextBar: Bar?,
+    timeFrame: TimeFrame,
+    offsetX: Float,
+    textMeasurer: TextMeasurer,
+) {
+    val calendar = bar.calendar
+    val minutes = calendar.get(Calendar.MINUTE)
+    val hours = calendar.get(Calendar.HOUR_OF_DAY)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val nameOfMonth = calendar.get(Calendar.MONTH)
+    val shouldDrawTimeDelimiter = when (timeFrame) {
+        TimeFrame.MIN_5 -> {
+            minutes == 0
+        }
+
+        TimeFrame.MIN_15 -> {
+            minutes == 0 && hours % 2 == 0
+        }
+
+        TimeFrame.MIN_30, TimeFrame.HOUR_1 -> {
+            val nextBarDay = nextBar?.calendar?.get(Calendar.DAY_OF_MONTH)
+            day != nextBarDay
+        }
+    }
+    if (!shouldDrawTimeDelimiter) return
+    drawLine(
+        color = Color.White.copy(alpha = 0.5f),
+        start = Offset(offsetX, 0f),
+        end = Offset(offsetX, size.height),
+        strokeWidth = 1f,
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx()))
+    )
+    val text = when (timeFrame) {
+        TimeFrame.MIN_5, TimeFrame.MIN_15 -> {
+            String.format("%02d:00", hours)
+        }
+
+        TimeFrame.MIN_30, TimeFrame.HOUR_1 -> {
+            String.format("%s %s ", day, nameOfMonth)
+        }
+    }
+    val textLayoutResult = textMeasurer.measure(
+        text = text,
+        style = TextStyle(
+            color = Color.White,
+            fontSize = 12.sp
+        )
+    )
+    drawText(
+        textLayoutResult = textLayoutResult,
+        topLeft = Offset(offsetX - textLayoutResult.size.width / 2, size.height)
+    )
 }
 
 @Composable
@@ -112,6 +194,7 @@ private fun Content(
     modifier: Modifier,
     mainState: State<MainState>,
     onMainStateChanged: (MainState) -> Unit,
+    timeFrame: TimeFrame,
 ) {
     val currentState = mainState.value
     val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
@@ -165,6 +248,17 @@ private fun Content(
                     start = Offset(offsetX, size.height - (bar.openPrice - minPrice) * pxPerPoint),
                     end = Offset(offsetX, size.height - (bar.closePrice - minPrice) * pxPerPoint),
                     strokeWidth = currentState.barWidth / 2
+                )
+                drawTimeDelimiter(
+                    bar = bar,
+                    nextBar = if (index < currentState.bars.size - 1) {
+                        currentState.bars[index + 1]
+                    } else {
+                        null
+                    },
+                    timeFrame = timeFrame,
+                    offsetX = offsetX,
+                    textMeasurer = textMeasurer
                 )
             }
         }
