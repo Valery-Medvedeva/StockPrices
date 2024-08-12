@@ -8,7 +8,6 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.time.delay
 import javax.inject.Inject
 
 class MainViewModel @Inject constructor(
@@ -21,8 +20,21 @@ class MainViewModel @Inject constructor(
     val state = _state.asStateFlow()
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        _state.value=MainScreenState.Error
-//        _state.value = lastState
+        lastState.let {
+            when (it) {
+                is MainScreenState.Content -> {
+                    _state.value = it.copy(sideEffect = Event.Error)
+                }
+
+                is MainScreenState.Initial -> {
+                    _state.value = MainScreenState.Error
+                }
+
+                else -> {
+                    _state.value = it
+                }
+            }
+        }
     }
 
     init {

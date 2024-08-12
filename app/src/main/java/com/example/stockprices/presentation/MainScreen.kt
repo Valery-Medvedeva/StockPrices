@@ -3,6 +3,7 @@ package com.example.stockprices.presentation
 import android.icu.text.DateFormat
 import android.icu.util.Calendar
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -53,6 +54,7 @@ import com.example.stockprices.domain.Bar
 import com.example.stockprices.domain.TimeFrame
 import com.example.stockprices.getMainComponent
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -66,38 +68,56 @@ fun MainScreen(
 ) {
     val component = getMainComponent()
     val viewModel: MainViewModel = viewModel(factory = component.getViewModelFactory())
-    val screenState = viewModel.state.catch {
-        emit(MainScreenState.Error)
-    }.collectAsState(initial = MainScreenState.Initial)
+    val screenState = viewModel.state.collectAsState(initial = MainScreenState.Initial)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    when (val currentState = screenState.value) {
-        is MainScreenState.Initial -> {}
-        is MainScreenState.Content -> {
-            val mainState = rememberMainState(bars = currentState.barList)
-            Content(
-                modifier = modifier,
-                mainState = mainState,
-                onMainStateChanged = {
-                    mainState.value = it
-                },
-                timeFrame = currentState.timeFrame
-            )
-            TimeFrames(selectedFrame = currentState.timeFrame) {
-                viewModel.loadBarList(it)
+    Scaffold(
+        modifier = modifier,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) {
+        when (val currentState = screenState.value) {
+            is MainScreenState.Initial -> {}
+            is MainScreenState.Content -> {
+                LaunchedEffect(currentState.sideEffect) {
+                    when (currentState.sideEffect) {
+                        Event.Error -> {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Too many attempts")
+                            }
+                        }
+                        null -> Unit
+                    }
+                }
+                val mainState = rememberMainState(bars = currentState.barList)
+                Content(
+                    modifier = modifier,
+                    mainState = mainState,
+                    onMainStateChanged = {
+                        mainState.value = it
+                    },
+                    timeFrame = currentState.timeFrame
+                )
+                TimeFrames(selectedFrame = currentState.timeFrame) {
+                    viewModel.loadBarList(it)
+                }
             }
-        }
 
-        is MainScreenState.Loading -> {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) { CircularProgressIndicator() }
-        }
+            is MainScreenState.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) { CircularProgressIndicator() }
+            }
 
-        is MainScreenState.Error -> {
-           Log.d("PERA", "something goes wrong")
+            is MainScreenState.Error -> {
+                scope.launch {
+                    snackbarHostState.showSnackbar("Check your internet connection")
+                }
+                Log.d("MainScreen", "something goes wrong")
+            }
         }
     }
 }

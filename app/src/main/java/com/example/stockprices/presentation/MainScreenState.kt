@@ -10,5 +10,13 @@ sealed class MainScreenState {
 
     data object Error: MainScreenState()
 
-    data class Content(val barList:List<Bar>, val timeFrame: TimeFrame) : MainScreenState()
+    data class Content(
+        val barList:List<Bar>,
+        val timeFrame: TimeFrame,
+        val sideEffect: Event? = null
+    ) : MainScreenState()
+}
+
+enum class Event {
+    Error
 }
