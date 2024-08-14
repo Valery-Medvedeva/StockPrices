@@ -1,9 +1,7 @@
 package com.example.stockprices.presentation
 
-import android.icu.text.DateFormat
+import android.annotation.SuppressLint
 import android.icu.util.Calendar
-import android.util.Log
-import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -17,21 +15,16 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -53,15 +46,14 @@ import com.example.stockprices.R
 import com.example.stockprices.domain.Bar
 import com.example.stockprices.domain.TimeFrame
 import com.example.stockprices.getMainComponent
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val MIN_VISIBLE_BARS_COUNT = 20
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun MainScreen(
     modifier: Modifier = Modifier,
@@ -86,6 +78,7 @@ fun MainScreen(
                                 snackbarHostState.showSnackbar("Too many attempts")
                             }
                         }
+
                         null -> Unit
                     }
                 }
@@ -113,15 +106,15 @@ fun MainScreen(
             }
 
             is MainScreenState.Error -> {
-                scope.launch {
+                LaunchedEffect(key1 = Unit) {
                     snackbarHostState.showSnackbar("Check your internet connection")
                 }
-                Log.d("MainScreen", "something goes wrong")
             }
         }
     }
 }
 
+@SuppressLint("DefaultLocale")
 private fun DrawScope.drawTimeDelimiter(
     bar: Bar,
     nextBar: Bar?,
@@ -133,7 +126,8 @@ private fun DrawScope.drawTimeDelimiter(
     val minutes = calendar.get(Calendar.MINUTE)
     val hours = calendar.get(Calendar.HOUR_OF_DAY)
     val day = calendar.get(Calendar.DAY_OF_MONTH)
-    val nameOfMonth = calendar.get(Calendar.MONTH)
+    val simpleDate=SimpleDateFormat("MMM", Locale.getDefault())
+    val nameOfMonth = simpleDate.format(calendar.time)
     val shouldDrawTimeDelimiter = when (timeFrame) {
         TimeFrame.MIN_5 -> {
             minutes == 0
